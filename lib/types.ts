@@ -15,6 +15,7 @@ export type EquipmentEntry = {
   rarity?:number|null;
   carry?:string;
   details?:string;
+  currentMagazine?:number;
 };
 
 export type Character = {
