@@ -15,8 +15,7 @@ const numberOr = (value: string, fallback: number) => {
 const tierLines = (parts: string[]) => {
   const explicit = parts.filter((part) => /^(≤|≥|\d+\s*[-–]\s*\d+)/.test(part))
   if (explicit.length >= 2) return explicit
-
-  const slash = parts.find((part) => /\d+[^;]*\/\d+[^;]*\/\d+/.test(part))
+  const slash = parts.find((part) => /^\d+[^;]*\/\d+[^;]*\/\d+/.test(part))
   if (!slash) return []
   const match = slash.match(/^(.+?)\s+(.+)$/)
   if (!match) return []
@@ -52,10 +51,7 @@ export default function Active() {
     if (!item || item.cost === null) return
     save({ ...c, equipment: [...c.equipment, { id: crypto.randomUUID(), name: item.name, quantity: 1, cost: item.cost, properties: item.properties || '—', rarity: item.rarity, carry: item.carry, details: item.details }] })
   }
-
-  const updateEquipment = (index: number, patch: Partial<EquipmentEntry>) => {
-    save({ ...c, equipment: c.equipment.map((item, i) => i === index ? { ...item, ...patch } : item) })
-  }
+  const updateEquipment = (index: number, patch: Partial<EquipmentEntry>) => save({ ...c, equipment: c.equipment.map((item, i) => i === index ? { ...item, ...patch } : item) })
   const increaseEquipment = (index: number) => updateEquipment(index, { quantity: c.equipment[index].quantity + 1 })
   const decreaseEquipment = (index: number) => updateEquipment(index, { quantity: Math.max(1, c.equipment[index].quantity - 1) })
   const removeEquipment = (index: number) => save({ ...c, equipment: c.equipment.filter((_, i) => i !== index) })
@@ -79,15 +75,17 @@ export default function Active() {
         {action.tiers && <ul className="equipmentTiers">{action.tiers.map((tier) => <li key={tier}>{tier}</li>)}</ul>}
         {action.effect && <div className="equipmentRule"><strong>Effect:</strong> {action.effect}</div>}
       </div>)}
+      {parts.filter((part) => /^aim\b|^reset\b|^special\b|^effect\b/i.test(part)).map((part) => {
+        const match = part.match(/^(Aim|Reset|Special|Effect)\s*:?[\s-]*(.*)$/i)
+        return <div className="equipmentRule" key={part}><strong>{match?.[1] || 'Special'}:</strong> {match?.[2] || part}</div>
+      })}
       {ammo && <div className="equipmentRule"><strong>Ammunition Cost:</strong> {ammo.match(/[0-9]+Cr\/shot/i)?.[0] || ammo}</div>}
       {magazine && <div className="equipmentRule"><strong>Magazine:</strong> {magazine.replace(/^magazine\s*/i, '')}</div>}
-      {parts.filter((part) => !/^(?:\d+(?:\.\d+)?m|\d+\s*cube|magazine|\d+Cr\/shot|Weapon,|\d+d\d+)/i.test(part) && !tiers.includes(part)).map((part) => <div className="equipmentRule" key={part}><strong>Special:</strong> {part}</div>)}
     </div>
 
     const consumed = new Set([range || '', combat || '', ammo || '', magazine || '', ...tiers])
     const labeled = parts.filter((part) => /^(Armour|Threshold|Aim|Reset|Effect|Special|Surgery|Location|Side effect)/i.test(part))
     const remaining = parts.filter((part) => !consumed.has(part) && !labeled.includes(part))
-
     return <div className="equipmentDetails">
       {weapon && <div className="equipmentMeta">{range ? <>📐 {range}&nbsp;&nbsp;</> : null}🎯 {targetFor(range || '')}</div>}
       {combat && <div className="equipmentRule"><strong>{combat}</strong></div>}
@@ -111,37 +109,8 @@ export default function Active() {
       <div><span>IP</span><b>{c.improvementPoints}</b></div><div><span>CREDITS</span><b>{c.credits.toLocaleString()} Cr</b></div>
     </div>
     <div className="tabs">{(['overview', 'skills', 'inventory'] as const).map((tabName) => <button key={tabName} className={tab === tabName ? 'activeTab' : ''} onClick={() => setTab(tabName)}>{tabName.toUpperCase()}</button>)}</div>
-
-    {tab === 'overview' && <div className="grid three">
-      <section className="panel"><h2>CHARACTERISTICS</h2>{CHARACTERISTICS.map((characteristic) => <label className="editableStat" key={characteristic}>{characteristic}<input type="number" value={c.characteristics[characteristic]} onChange={(e) => setCharacteristic(characteristic, numberOr(e.target.value, 0))} /></label>)}</section>
-      <section className="panel"><h2>RESOURCES</h2><label>CREDITS<input type="number" min={0} value={c.credits} onChange={(e) => save({ ...c, credits: Math.max(0, numberOr(e.target.value, 0)) })} /></label><label>IMPROVEMENT POINTS<input type="number" min={0} value={c.improvementPoints} onChange={(e) => save({ ...c, improvementPoints: Math.max(0, numberOr(e.target.value, 0)) })} /></label><label>STAMINA<input type="number" min={0} max={c.stamina} value={c.currentStamina} onChange={(e) => setStam(numberOr(e.target.value, 0))} /></label><label>LUCK<input type="number" min={0} max={6} value={c.luck} onChange={(e) => setLuck(numberOr(e.target.value, 0))} /></label></section>
-      <section className="panel"><h2>CONDITIONS / NOTES</h2><div className="row"><input value={condition} onChange={(e) => setCondition(e.target.value)} placeholder="Add note or condition" /><button onClick={() => setCondition('')}>CLEAR</button></div>{condition && <p>{condition}</p>}<p className="muted">Personal record only — no new condition mechanic is added.</p></section>
-    </div>}
-
+    {tab === 'overview' && <div className="grid three"><section className="panel"><h2>CHARACTERISTICS</h2>{CHARACTERISTICS.map((characteristic) => <label className="editableStat" key={characteristic}>{characteristic}<input type="number" value={c.characteristics[characteristic]} onChange={(e) => setCharacteristic(characteristic, numberOr(e.target.value, 0))} /></label>)}</section><section className="panel"><h2>RESOURCES</h2><label>CREDITS<input type="number" min={0} value={c.credits} onChange={(e) => save({ ...c, credits: Math.max(0, numberOr(e.target.value, 0)) })} /></label><label>IMPROVEMENT POINTS<input type="number" min={0} value={c.improvementPoints} onChange={(e) => save({ ...c, improvementPoints: Math.max(0, numberOr(e.target.value, 0)) })} /></label><label>STAMINA<input type="number" min={0} max={c.stamina} value={c.currentStamina} onChange={(e) => setStam(numberOr(e.target.value, 0))} /></label><label>LUCK<input type="number" min={0} max={6} value={c.luck} onChange={(e) => setLuck(numberOr(e.target.value, 0))} /></label></section><section className="panel"><h2>CONDITIONS / NOTES</h2><div className="row"><input value={condition} onChange={(e) => setCondition(e.target.value)} placeholder="Add note or condition" /><button onClick={() => setCondition('')}>CLEAR</button></div>{condition && <p>{condition}</p>}<p className="muted">Personal record only — no new condition mechanic is added.</p></section></div>}
     {tab === 'skills' && <section className="panel"><h2>SKILLS</h2><div className="skillsEditable">{SKILLS.map((skill) => <label className="skillEdit" key={skill}><span>{skill}</span><input type="number" min={0} max={5} value={c.skills[skill]} onChange={(e) => setSkill(skill, numberOr(e.target.value, 0))} /></label>)}</div></section>}
-
-    {tab === 'inventory' && <section className="panel"><div className="inventory-head"><h2>INVENTORY</h2><select defaultValue="" onChange={(e) => { if (!e.target.value) return; addEquipment(e.target.value); e.currentTarget.value = '' }}><option value="">ADD EQUIPMENT...</option>{EQUIPMENT.map((item) => <option key={item.name} value={item.name} disabled={item.cost === null}>{item.name}</option>)}</select></div>
-      <div className="equipmentGrid">{c.equipment.length === 0 ? <p className="muted">No equipment recorded.</p> : c.equipment.map((inventoryItem, index) => {
-        const details = EQUIPMENT.find((item) => item.name === inventoryItem.name)
-        if (!details) return null
-        const properties = inventoryItem.properties ?? details.properties ?? '—'
-        const rarity = inventoryItem.rarity ?? details.rarity
-        const carry = inventoryItem.carry ?? details.carry
-        const cost = inventoryItem.cost ?? details.cost ?? 0
-        return <article className="equipmentCard" key={inventoryItem.id}>
-          <div className="equipmentCardHeader"><input className="equipmentNameInput" value={inventoryItem.name} onChange={(e) => updateEquipment(index, { name: e.target.value })} /><button className="danger" onClick={() => removeEquipment(index)}>REMOVE</button></div>
-          <div className="equipmentDivider" />
-          <div className="equipmentFields">
-            <label><strong>Properties:</strong><input value={properties} onChange={(e) => updateEquipment(index, { properties: e.target.value })} /></label>
-            <label><strong>Cost:</strong><input type="number" min={0} value={cost} onChange={(e) => updateEquipment(index, { cost: Math.max(0, numberOr(e.target.value, 0)) })} /></label>
-            <label><strong>Rarity:</strong><input type="number" min={0} max={6} value={rarity ?? ''} onChange={(e) => updateEquipment(index, { rarity: e.target.value === '' ? null : numberOr(e.target.value, 0) })} /></label>
-            <label><strong>Carry Capacity:</strong><input value={carry} onChange={(e) => updateEquipment(index, { carry: e.target.value })} /></label>
-          </div>
-          <label className="equipmentRawDetails"><strong>Details:</strong><textarea value={inventoryItem.details ?? details.details} onChange={(e) => updateEquipment(index, { details: e.target.value })} /></label>
-          {renderEquipmentDetails(inventoryItem, details.category, details.details)}
-          <div className="equipmentQuantity"><span>QUANTITY</span><button onClick={() => decreaseEquipment(index)}>−</button><input type="number" min={1} value={inventoryItem.quantity} onChange={(e) => updateEquipment(index, { quantity: Math.max(1, numberOr(e.target.value, 1)) })} /><button onClick={() => increaseEquipment(index)}>+</button></div>
-        </article>
-      })}</div>
-    </section>}
+    {tab === 'inventory' && <section className="panel"><div className="inventory-head"><h2>INVENTORY</h2><select defaultValue="" onChange={(e) => { if (!e.target.value) return; addEquipment(e.target.value); e.currentTarget.value = '' }}><option value="">ADD EQUIPMENT...</option>{EQUIPMENT.map((item) => <option key={item.name} value={item.name} disabled={item.cost === null}>{item.name}</option>)}</select></div><div className="equipmentGrid">{c.equipment.length === 0 ? <p className="muted">No equipment recorded.</p> : c.equipment.map((inventoryItem, index) => { const details = EQUIPMENT.find((item) => item.name === inventoryItem.name); if (!details) return null; const properties = inventoryItem.properties ?? details.properties ?? '—'; const rarity = inventoryItem.rarity ?? details.rarity; const carry = inventoryItem.carry ?? details.carry; const cost = inventoryItem.cost ?? details.cost ?? 0; return <article className="equipmentCard" key={inventoryItem.id}><div className="equipmentCardHeader"><input className="equipmentNameInput" value={inventoryItem.name} onChange={(e) => updateEquipment(index, { name: e.target.value })} /><button className="danger" onClick={() => removeEquipment(index)}>REMOVE</button></div><div className="equipmentDivider" /><div className="equipmentFields"><label><strong>Properties:</strong><input value={properties} onChange={(e) => updateEquipment(index, { properties: e.target.value })} /></label><label><strong>Cost:</strong><input type="number" min={0} value={cost} onChange={(e) => updateEquipment(index, { cost: Math.max(0, numberOr(e.target.value, 0)) })} /></label><label><strong>Rarity:</strong><input type="number" min={0} max={6} value={rarity ?? ''} onChange={(e) => updateEquipment(index, { rarity: e.target.value === '' ? null : numberOr(e.target.value, 0) })} /></label><label><strong>Carry Capacity:</strong><input value={carry} onChange={(e) => updateEquipment(index, { carry: e.target.value })} /></label></div><label className="equipmentRawDetails"><strong>Details:</strong><textarea value={inventoryItem.details ?? details.details} onChange={(e) => updateEquipment(index, { details: e.target.value })} /></label>{renderEquipmentDetails(inventoryItem, details.category, details.details)}<div className="equipmentQuantity"><span>QUANTITY</span><button onClick={() => decreaseEquipment(index)}>−</button><input type="number" min={1} value={inventoryItem.quantity} onChange={(e) => updateEquipment(index, { quantity: Math.max(1, numberOr(e.target.value, 1)) })} /><button onClick={() => increaseEquipment(index)}>+</button></div></article>})}</div></section>}
   </Layout>
 }
