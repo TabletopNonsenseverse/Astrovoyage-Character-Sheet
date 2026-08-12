@@ -12,15 +12,15 @@ export default function Active() {
   const [c, setC] = useState<Character | null>(null)
 
   const [tab, setTab] = useState<
-    'overview' | 'skills' | 'inventory' | 'equipment'
+    'overview' | 'skills' | 'inventory'
   >('overview')
 
   const [condition, setCondition] = useState('')
 
   useEffect(() => {
-    if (r.isReady) {
-      loadCharacter(String(r.query.id)).then(setC)
-    }
+    if (!r.isReady) return
+
+    loadCharacter(String(r.query.id)).then(setC)
   }, [r.isReady, r.query.id])
 
   if (!c) {
@@ -38,32 +38,45 @@ export default function Active() {
     void saveCharacter(next)
   }
 
-  const setStam = (v: number) => {
+  const setStam = (value: number) => {
     save({
       ...c,
       currentStamina: Math.max(
         0,
-        Math.min(c.stamina, v)
+        Math.min(c.stamina, value)
       ),
     })
   }
 
-  const setLuck = (v: number) => {
+  const setLuck = (value: number) => {
     save({
       ...c,
       luck: Math.max(
         0,
-        Math.min(6, v)
+        Math.min(6, value)
       ),
     })
   }
 
   const addEquipment = (name: string) => {
     const item = EQUIPMENT.find(
-      (x) => x.name === name
+      (equipment) => equipment.name === name
     )
 
-    if (!item) return
+    if (!item) {
+      return
+    }
+
+    /*
+     * EquipmentEntry.cost is a number in the existing
+     * character type. Some equipment entries in the
+     * existing equipment data have cost === null.
+     *
+     * We do not invent a cost for those entries.
+     */
+    if (item.cost === null) {
+      return
+    }
 
     const equipment = [
       ...c.equipment,
@@ -83,8 +96,8 @@ export default function Active() {
 
   const increaseEquipment = (index: number) => {
     const equipment = c.equipment.map(
-      (item, i) =>
-        i === index
+      (item, itemIndex) =>
+        itemIndex === index
           ? {
               ...item,
               quantity: item.quantity + 1,
@@ -100,8 +113,8 @@ export default function Active() {
 
   const decreaseEquipment = (index: number) => {
     const equipment = c.equipment.map(
-      (item, i) =>
-        i === index
+      (item, itemIndex) =>
+        itemIndex === index
           ? {
               ...item,
               quantity: Math.max(
@@ -120,7 +133,7 @@ export default function Active() {
 
   const removeEquipment = (index: number) => {
     const equipment = c.equipment.filter(
-      (_, i) => i !== index
+      (_, itemIndex) => itemIndex !== index
     )
 
     save({
@@ -160,8 +173,10 @@ export default function Active() {
             min={0}
             max={c.stamina}
             value={c.currentStamina}
-            onChange={(e) =>
-              setStam(Number(e.target.value))
+            onChange={(event) =>
+              setStam(
+                Number(event.target.value)
+              )
             }
           />
         </div>
@@ -211,15 +226,19 @@ export default function Active() {
       <div className="tabs">
         {(
           ['overview', 'skills', 'inventory'] as const
-        ).map((t) => (
+        ).map((tabName) => (
           <button
-            key={t}
+            key={tabName}
             className={
-              tab === t ? 'activeTab' : ''
+              tab === tabName
+                ? 'activeTab'
+                : ''
             }
-            onClick={() => setTab(t)}
+            onClick={() =>
+              setTab(tabName)
+            }
           >
-            {t.toUpperCase()}
+            {tabName.toUpperCase()}
           </button>
         ))}
       </div>
@@ -229,18 +248,26 @@ export default function Active() {
           <section className="panel">
             <h2>CHARACTERISTICS</h2>
 
-            {CHARACTERISTICS.map((k) => (
-              <div
-                className="line"
-                key={k}
-              >
-                <span>{k}</span>
+            {CHARACTERISTICS.map(
+              (characteristic) => (
+                <div
+                  className="line"
+                  key={characteristic}
+                >
+                  <span>
+                    {characteristic}
+                  </span>
 
-                <b>
-                  {c.characteristics[k]}
-                </b>
-              </div>
-            ))}
+                  <b>
+                    {
+                      c.characteristics[
+                        characteristic
+                      ]
+                    }
+                  </b>
+                </div>
+              )
+            )}
           </section>
 
           <section className="panel">
@@ -251,13 +278,16 @@ export default function Active() {
 
               <input
                 type="number"
+                min={0}
                 value={c.credits}
-                onChange={(e) =>
+                onChange={(event) =>
                   save({
                     ...c,
                     credits: Math.max(
                       0,
-                      Number(e.target.value) || 0
+                      Number(
+                        event.target.value
+                      ) || 0
                     ),
                   })
                 }
@@ -269,14 +299,18 @@ export default function Active() {
 
               <input
                 type="number"
+                min={0}
                 value={c.improvementPoints}
-                onChange={(e) =>
+                onChange={(event) =>
                   save({
                     ...c,
-                    improvementPoints: Math.max(
-                      0,
-                      Number(e.target.value) || 0
-                    ),
+                    improvementPoints:
+                      Math.max(
+                        0,
+                        Number(
+                          event.target.value
+                        ) || 0
+                      ),
                   })
                 }
               />
@@ -291,8 +325,10 @@ export default function Active() {
             <div className="row">
               <input
                 value={condition}
-                onChange={(e) =>
-                  setCondition(e.target.value)
+                onChange={(event) =>
+                  setCondition(
+                    event.target.value
+                  )
                 }
                 placeholder="Add note or condition"
               />
@@ -307,8 +343,9 @@ export default function Active() {
             </div>
 
             <p className="muted">
-              No condition mechanic is added here.
-              This field is only a personal record.
+              No condition mechanic is
+              added here. This field is
+              only a personal record.
             </p>
 
             {condition && (
@@ -322,15 +359,15 @@ export default function Active() {
         <section className="panel">
           <h2>SKILLS</h2>
 
-          {SKILLS.map((s) => (
+          {SKILLS.map((skill) => (
             <div
               className="line"
-              key={s}
+              key={skill}
             >
-              <span>{s}</span>
+              <span>{skill}</span>
 
               <b>
-                {c.skills[s]}
+                {c.skills[skill]}
               </b>
             </div>
           ))}
@@ -344,16 +381,18 @@ export default function Active() {
 
             <select
               defaultValue=""
-              onChange={(e) => {
-                if (!e.target.value) {
+              onChange={(event) => {
+                const name =
+                  event.target.value
+
+                if (!name) {
                   return
                 }
 
-                addEquipment(
-                  e.target.value
-                )
+                addEquipment(name)
 
-                e.currentTarget.value = ''
+                event.currentTarget.value =
+                  ''
               }}
             >
               <option value="">
@@ -364,6 +403,9 @@ export default function Active() {
                 <option
                   key={item.name}
                   value={item.name}
+                  disabled={
+                    item.cost === null
+                  }
                 >
                   {item.name}
                 </option>
