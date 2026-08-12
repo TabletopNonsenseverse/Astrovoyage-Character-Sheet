@@ -10,16 +10,17 @@ export default function Active() {
   const r = useRouter()
 
   const [c, setC] = useState<Character | null>(null)
+
   const [tab, setTab] = useState<
-    'overview' | 'skills' | 'inventory'
+    'overview' | 'skills' | 'inventory' | 'equipment'
   >('overview')
 
   const [condition, setCondition] = useState('')
 
   useEffect(() => {
-    if (!r.isReady) return
-
-    loadCharacter(String(r.query.id)).then(setC)
+    if (r.isReady) {
+      loadCharacter(String(r.query.id)).then(setC)
+    }
   }, [r.isReady, r.query.id])
 
   if (!c) {
@@ -70,6 +71,7 @@ export default function Active() {
         id: crypto.randomUUID(),
         name: item.name,
         quantity: 1,
+        cost: item.cost,
       },
     ]
 
@@ -80,13 +82,14 @@ export default function Active() {
   }
 
   const increaseEquipment = (index: number) => {
-    const equipment = c.equipment.map((item, i) =>
-      i === index
-        ? {
-            ...item,
-            quantity: item.quantity + 1,
-          }
-        : item
+    const equipment = c.equipment.map(
+      (item, i) =>
+        i === index
+          ? {
+              ...item,
+              quantity: item.quantity + 1,
+            }
+          : item
     )
 
     save({
@@ -96,16 +99,17 @@ export default function Active() {
   }
 
   const decreaseEquipment = (index: number) => {
-    const equipment = c.equipment.map((item, i) =>
-      i === index
-        ? {
-            ...item,
-            quantity: Math.max(
-              1,
-              item.quantity - 1
-            ),
-          }
-        : item
+    const equipment = c.equipment.map(
+      (item, i) =>
+        i === index
+          ? {
+              ...item,
+              quantity: Math.max(
+                1,
+                item.quantity - 1
+              ),
+            }
+          : item
     )
 
     save({
@@ -211,9 +215,7 @@ export default function Active() {
           <button
             key={t}
             className={
-              tab === t
-                ? 'activeTab'
-                : ''
+              tab === t ? 'activeTab' : ''
             }
             onClick={() => setTab(t)}
           >
@@ -249,7 +251,6 @@ export default function Active() {
 
               <input
                 type="number"
-                min={0}
                 value={c.credits}
                 onChange={(e) =>
                   save({
@@ -268,7 +269,6 @@ export default function Active() {
 
               <input
                 type="number"
-                min={0}
                 value={c.improvementPoints}
                 onChange={(e) =>
                   save({
@@ -345,7 +345,9 @@ export default function Active() {
             <select
               defaultValue=""
               onChange={(e) => {
-                if (!e.target.value) return
+                if (!e.target.value) {
+                  return
+                }
 
                 addEquipment(
                   e.target.value
