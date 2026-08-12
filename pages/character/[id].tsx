@@ -32,20 +32,22 @@ export default function Active() {
   const renderEquipmentDetails = (details: string, category: string) => {
     const parts = details.split(';').map((part) => part.trim()).filter(Boolean)
     const range = parts.find((part) => /^\d+m\b/i.test(part))
+    const target = parts.find((part) => /^(target|one creature|one object|one creature or object)\b/i.test(part))
     const combat = parts.find((part) => /Weapon,|damage/i.test(part) && !/^[≤≥]?\s*\d+[-+]?\d*/.test(part))
     const magazine = parts.find((part) => /^magazine/i.test(part))
     const ammo = parts.find((part) => /Cr\/shot/i.test(part))
-    const tierParts = parts.flatMap((part) => part.split(/(?=≤\s*\d+|≥\s*\d+|\d+\s*[-–]\s*\d+)/).map((x) => x.trim()).filter((x) => /^(≤|≥|\d+\s*[-–]\s*\d+)/.test(x))
+    const tierPattern = /^(≤\s*\d+|≥\s*\d+|\d+\s*[-–]\s*\d+)/
+    const tierParts = parts.filter((part) => tierPattern.test(part))
     const hasTiers = tierParts.length >= 2
-    const consumed = new Set<string>([range || '', combat || '', magazine || '', ammo || '', ...tierParts])
+    const consumed = new Set<string>([range || '', target || '', combat || '', magazine || '', ammo || '', ...tierParts])
     const special = parts.filter((part) => !consumed.has(part))
     const weapon = category === 'Melee Weapons' || category === 'Ranged'
 
     return <div className="equipmentDetails">
       {range && <div className="equipmentMeta">📐 <strong>Range:</strong> {range}</div>}
-      {weapon && <div className="equipmentMeta">🎯 <strong>Target:</strong> One creature or object</div>}
+      {weapon && <div className="equipmentMeta">🎯 <strong>Target:</strong> {target ? target.replace(/^target\s*:?\s*/i, '') : 'One creature or object'}</div>}
       {combat && <div className="equipmentRule"><strong>{combat}</strong></div>}
-      {hasTiers ? <ul className="equipmentTiers">{tierParts.map((part) => <li key={part}><strong>{part.match(/^(≤\s*\d+|≥\s*\d+|\d+\s*[-–]\s*\d+)/)?.[0]}</strong>{part.replace(/^(≤\s*\d+|≥\s*\d+|\d+\s*[-–]\s*\d+)/, '')}</li>)}</ul> : null}
+      {hasTiers && <ul className="equipmentTiers">{tierParts.map((part) => <li key={part}>{part}</li>)}</ul>}
       {special.length > 0 && <div className="equipmentRule"><strong>Special Effect:</strong> {special.join(' ')}</div>}
       {ammo && <div className="equipmentRule"><strong>Ammunition Cost:</strong> {ammo.replace(/^.*?([0-9]+Cr\/shot).*$/i, '$1')}</div>}
       {magazine && <div className="equipmentRule"><strong>Magazine:</strong> {magazine.replace(/^magazine\s*/i, '')}</div>}
