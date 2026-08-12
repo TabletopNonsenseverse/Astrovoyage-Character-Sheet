@@ -16,7 +16,7 @@ export function newCharacter(name=''): Character {
   const now = new Date().toISOString();
   const characteristics = blankCharacteristics();
   const d = derived(characteristics);
-  return {id:crypto.randomUUID(),name,characteristics,skills:blankSkills(),stamina:d.stamina,currentStamina:d.stamina,speed:d.speed,luck:1,improvementPoints:0,credits:0,equipmentCredits:2000,equipment:[],createdAt:now,updatedAt:now};
+  return {id:crypto.randomUUID(),name,characteristics,skills:blankSkills(),stamina:d.stamina,currentStamina:d.stamina,speed:d.speed,luck:1,improvementPoints:0,credits:0,equipmentCredits:2000,equipment:[],conditions:{},portrait:'',createdAt:now,updatedAt:now}
 }
 export function recalc(c: Character): Character {
   const d = derived(c.characteristics);
@@ -30,5 +30,6 @@ export function creationSkillRequirementOk(c: Character): boolean {
   const at3 = vals.filter(v=>v===3).length;
   const at1 = vals.filter(v=>v===1).length;
   const extra = Math.max(0, 6 - characteristicTotal(c.characteristics));
-  return at2 === 8 && at1 === 1 && at3 === 1 + extra && vals.every(v=>v>=0 && v<=5);
+  // New rule: require exactly five skills at 2, no skills at 1, and exactly `extra` skills at 3.
+  return at2 === 5 && at1 === 0 && at3 === extra && vals.every(v=>v>=0 && v<=5);
 }
