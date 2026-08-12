@@ -6,7 +6,16 @@ export const SKILLS = [
 ] as const;
 export type SkillName = typeof SKILLS[number];
 
-export type EquipmentEntry = { id:string; name:string; quantity:number; cost:number };
+export type EquipmentEntry = {
+  id:string;
+  name:string;
+  quantity:number;
+  cost:number;
+  properties?:string;
+  rarity?:number|null;
+  carry?:string;
+  details?:string;
+};
 
 export type Character = {
   id:string;
