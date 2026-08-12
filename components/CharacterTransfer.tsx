@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+simport { useRef } from 'react'
 import type { Character } from '../lib/types'
 import { saveCharacter } from '../lib/storage'
 
