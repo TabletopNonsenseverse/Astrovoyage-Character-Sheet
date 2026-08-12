@@ -1,10 +1,32 @@
-import { useRouter } from 'next/router'
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/router'
 import Layout from '../../components/Layout'
-import type { Character } from '../../lib/types'
+import type { Character, EquipmentEntry } from '../../lib/types'
 import { CHARACTERISTICS, SKILLS } from '../../lib/types'
 import { loadCharacter, saveCharacter } from '../../lib/storage'
 import { EQUIPMENT } from '../../data/equipment'
+import { WEAPON_ACTIONS } from '../../data/weaponPresentation'
+
+const numberOr = (value: string, fallback: number) => {
+  const parsed = Number(value)
+  return Number.isFinite(parsed) ? parsed : fallback
+}
+
+const tierLines = (parts: string[]) => {
+  const explicit = parts.filter((part) => /^(≤|≥|\d+\s*[-–]\s*\d+)/.test(part))
+  if (explicit.length >= 2) return explicit
+
+  const slash = parts.find((part) => /\d+[^;]*\/\d+[^;]*\/\d+/.test(part))
+  if (!slash) return []
+  const match = slash.match(/^(.+?)\s+(.+)$/)
+  if (!match) return []
+  const values = match[1].split('/').map((value) => value.trim())
+  if (values.length !== 3) return []
+  const suffix = match[2]
+  return [`≤ 11 — ${values[0]} ${suffix}`, `12-16 — ${values[1]} ${suffix}`, `≥ 17 — ${values[2]} ${suffix}`]
+}
+
+const targetFor = (range: string) => /cube|area/i.test(range) ? 'All creatures in the area' : 'One creature or object'
 
 export default function Active() {
   const r = useRouter()
@@ -24,74 +46,57 @@ export default function Active() {
   const setLuck = (value: number) => save({ ...c, luck: Math.max(0, Math.min(6, value)) })
   const setCharacteristic = (name: typeof CHARACTERISTICS[number], value: number) => save({ ...c, characteristics: { ...c.characteristics, [name]: value } })
   const setSkill = (name: typeof SKILLS[number], value: number) => save({ ...c, skills: { ...c.skills, [name]: Math.max(0, Math.min(5, value)) } })
-  const addEquipment = (name: string) => { const item = EQUIPMENT.find((equipment) => equipment.name === name); if (!item || item.cost === null) return; save({ ...c, equipment: [...c.equipment, { id: crypto.randomUUID(), name: item.name, quantity: 1, cost: item.cost }] }) }
-  const increaseEquipment = (index: number) => save({ ...c, equipment: c.equipment.map((item, i) => i === index ? { ...item, quantity: item.quantity + 1 } : item) })
-  const decreaseEquipment = (index: number) => save({ ...c, equipment: c.equipment.map((item, i) => i === index ? { ...item, quantity: Math.max(1, item.quantity - 1) } : item) })
-  const removeEquipment = (index: number) => save({ ...c, equipment: c.equipment.filter((_, i) => i !== index) })
 
-  const renderTiers = (parts: string[]) => {
-    const tiers = parts.filter((part) => /^(≤|≥|\d+\s*[-–]\s*\d+)/.test(part))
-    if (tiers.length < 2) return null
-    return <ul className="equipmentTiers">{tiers.map((part) => <li key={part}>{part}</li>)}</ul>
+  const addEquipment = (name: string) => {
+    const item = EQUIPMENT.find((equipment) => equipment.name === name)
+    if (!item || item.cost === null) return
+    save({ ...c, equipment: [...c.equipment, { id: crypto.randomUUID(), name: item.name, quantity: 1, cost: item.cost, properties: item.properties || '—', rarity: item.rarity, carry: item.carry, details: item.details }] })
   }
 
-  const renderEquipmentDetails = (details: string, category: string) => {
-    const parts = details.split(';').map((part) => part.trim()).filter(Boolean)
+  const updateEquipment = (index: number, patch: Partial<EquipmentEntry>) => {
+    save({ ...c, equipment: c.equipment.map((item, i) => i === index ? { ...item, ...patch } : item) })
+  }
+  const increaseEquipment = (index: number) => updateEquipment(index, { quantity: c.equipment[index].quantity + 1 })
+  const decreaseEquipment = (index: number) => updateEquipment(index, { quantity: Math.max(1, c.equipment[index].quantity - 1) })
+  const removeEquipment = (index: number) => save({ ...c, equipment: c.equipment.filter((_, i) => i !== index) })
+
+  const renderEquipmentDetails = (entry: EquipmentEntry, category: string, sourceDetails: string) => {
+    const details = entry.details ?? sourceDetails
+    const actions = WEAPON_ACTIONS[entry.name]
     const weapon = category === 'Melee Weapons' || category === 'Ranged'
-    const magazine = parts.find((part) => /^magazine/i.test(part))
+    const parts = details.split(';').map((part) => part.trim()).filter(Boolean)
+    const range = parts.find((part) => /^\d+(?:\.\d+)?m\b|^\d+\s*cube/i.test(part))
+    const combat = parts.find((part) => /Weapon,|^\d+d\d+/i.test(part))
+    const tiers = tierLines(parts)
     const ammo = parts.find((part) => /Cr\/shot/i.test(part))
+    const magazine = parts.find((part) => /^magazine\b/i.test(part))
 
-    // Some weapon records contain explicit action headings. Keep each action together
-    // instead of flattening all of its rules into one "Special" line.
-    const actionHeading = /^(Single Shot|Burst|Suppress)$/i
-    const hasActions = weapon && parts.some((part) => actionHeading.test(part))
+    if (actions) return <div className="equipmentDetails">
+      {actions.map((action) => <div className="equipmentAction" key={action.title}>
+        <h4>{action.title}</h4>
+        <div className="equipmentMeta">📐 {action.range} &nbsp;&nbsp;🎯 {action.target}</div>
+        {action.check && <div className="equipmentRule"><strong>{action.check}</strong></div>}
+        {action.tiers && <ul className="equipmentTiers">{action.tiers.map((tier) => <li key={tier}>{tier}</li>)}</ul>}
+        {action.effect && <div className="equipmentRule"><strong>Effect:</strong> {action.effect}</div>}
+      </div>)}
+      {ammo && <div className="equipmentRule"><strong>Ammunition Cost:</strong> {ammo.match(/[0-9]+Cr\/shot/i)?.[0] || ammo}</div>}
+      {magazine && <div className="equipmentRule"><strong>Magazine:</strong> {magazine.replace(/^magazine\s*/i, '')}</div>}
+      {parts.filter((part) => !/^(?:\d+(?:\.\d+)?m|\d+\s*cube|magazine|\d+Cr\/shot|Weapon,|\d+d\d+)/i.test(part) && !tiers.includes(part)).map((part) => <div className="equipmentRule" key={part}><strong>Special:</strong> {part}</div>)}
+    </div>
 
-    if (hasActions) {
-      const actions: Array<{ title: string; parts: string[] }> = []
-      let current: { title: string; parts: string[] } | null = null
-      parts.forEach((part) => {
-        if (actionHeading.test(part)) {
-          current = { title: part, parts: [] }
-          actions.push(current)
-        } else if (current) {
-          current.parts.push(part)
-        }
-      })
-
-      const consumed = new Set([magazine || '', ammo || ''])
-      return <div className="equipmentDetails">
-        {actions.map((action) => {
-          const range = action.parts.find((part) => /^\d+m\b/i.test(part))
-          const target = action.parts.find((part) => /^target\b/i.test(part))
-          const combat = action.parts.find((part) => /Weapon,|^\d+d\d+/i.test(part))
-          const tiers = renderTiers(action.parts)
-          const effect = action.parts.find((part) => /^effect\b/i.test(part))
-          return <div className="equipmentAction" key={action.title}>
-            <h4>{action.title}</h4>
-            <div className="equipmentMeta">{range && <>📐 {range}</>}{range && <span> </span>}🎯 {target ? target.replace(/^target\s*:?\s*/i, '') : 'One creature or object'}</div>
-            {combat && <div className="equipmentRule"><strong>{combat}</strong></div>}
-            {tiers}
-            {effect && <div className="equipmentRule"><strong>Effect:</strong> {effect.replace(/^effect\s*:?\s*/i, '')}</div>}
-          </div>
-        })}
-        {parts.filter((part) => !consumed.has(part) && !actions.some((action) => action.parts.includes(part))).map((part) => <div className="equipmentRule" key={part}><strong>Special:</strong> {part}</div>)}
-        {ammo && <div className="equipmentRule"><strong>Ammunition Cost:</strong> {ammo.match(/[0-9]+Cr\/shot/i)?.[0] || ammo}</div>}
-        {magazine && <div className="equipmentRule"><strong>Magazine:</strong> {magazine.replace(/^magazine\s*/i, '')}</div>}
-      </div>
-    }
-
-    const range = parts.find((part) => /^\d+m\b/i.test(part))
-    const combat = parts.find((part) => /Weapon,|damage/i.test(part) && !/^[≤≥]?\s*\d+[-+]?\d*/.test(part))
-    const tiers = renderTiers(parts)
-    const tierParts = parts.filter((part) => /^(≤|≥|\d+\s*[-–]\s*\d+)/.test(part))
-    const consumed = new Set([range || '', combat || '', magazine || '', ammo || '', ...tierParts])
-    const special = parts.filter((part) => !consumed.has(part))
+    const consumed = new Set([range || '', combat || '', ammo || '', magazine || '', ...tiers])
+    const labeled = parts.filter((part) => /^(Armour|Threshold|Aim|Reset|Effect|Special|Surgery|Location|Side effect)/i.test(part))
+    const remaining = parts.filter((part) => !consumed.has(part) && !labeled.includes(part))
 
     return <div className="equipmentDetails">
-      {weapon && <div className="equipmentMeta">{range && <>📐 {range} </>}🎯 One creature or object</div>}
+      {weapon && <div className="equipmentMeta">{range ? <>📐 {range}&nbsp;&nbsp;</> : null}🎯 {targetFor(range || '')}</div>}
       {combat && <div className="equipmentRule"><strong>{combat}</strong></div>}
-      {tiers}
-      {special.length > 0 && <div className="equipmentRule"><strong>Special:</strong> {special.join(' ')}</div>}
+      {tiers.length >= 2 && <ul className="equipmentTiers">{tiers.map((tier) => <li key={tier}>{tier}</li>)}</ul>}
+      {labeled.map((part) => {
+        const match = part.match(/^(Armour|Threshold|Aim|Reset|Effect|Special|Surgery(?: & Recovery)?(?: Time)?|Location|Side effect)\s*:?[\s-]*(.*)$/i)
+        return match ? <div className="equipmentRule" key={part}><strong>{match[1]}:</strong> {match[2]}</div> : null
+      })}
+      {remaining.length > 0 && <div className="equipmentRule"><strong>Special:</strong> {remaining.join(' ')}</div>}
       {ammo && <div className="equipmentRule"><strong>Ammunition Cost:</strong> {ammo.match(/[0-9]+Cr\/shot/i)?.[0] || ammo}</div>}
       {magazine && <div className="equipmentRule"><strong>Magazine:</strong> {magazine.replace(/^magazine\s*/i, '')}</div>}
     </div>
@@ -106,19 +111,37 @@ export default function Active() {
       <div><span>IP</span><b>{c.improvementPoints}</b></div><div><span>CREDITS</span><b>{c.credits.toLocaleString()} Cr</b></div>
     </div>
     <div className="tabs">{(['overview', 'skills', 'inventory'] as const).map((tabName) => <button key={tabName} className={tab === tabName ? 'activeTab' : ''} onClick={() => setTab(tabName)}>{tabName.toUpperCase()}</button>)}</div>
+
     {tab === 'overview' && <div className="grid three">
-      <section className="panel"><h2>CHARACTERISTICS</h2>{CHARACTERISTICS.map((characteristic) => <label className="editableStat" key={characteristic}>{characteristic}<input type="number" value={c.characteristics[characteristic]} onChange={(e) => setCharacteristic(characteristic, Number(e.target.value) || 0)} /></label>)}</section>
-      <section className="panel"><h2>RESOURCES</h2><label>CREDITS<input type="number" min={0} value={c.credits} onChange={(e) => save({ ...c, credits: Math.max(0, Number(e.target.value) || 0) })} /></label><label>IMPROVEMENT POINTS<input type="number" min={0} value={c.improvementPoints} onChange={(e) => save({ ...c, improvementPoints: Math.max(0, Number(e.target.value) || 0) })} /></label><label>STAMINA<input type="number" min={0} max={c.stamina} value={c.currentStamina} onChange={(e) => setStam(Number(e.target.value) || 0)} /></label><label>LUCK<input type="number" min={0} max={6} value={c.luck} onChange={(e) => setLuck(Number(e.target.value) || 0)} /></label></section>
+      <section className="panel"><h2>CHARACTERISTICS</h2>{CHARACTERISTICS.map((characteristic) => <label className="editableStat" key={characteristic}>{characteristic}<input type="number" value={c.characteristics[characteristic]} onChange={(e) => setCharacteristic(characteristic, numberOr(e.target.value, 0))} /></label>)}</section>
+      <section className="panel"><h2>RESOURCES</h2><label>CREDITS<input type="number" min={0} value={c.credits} onChange={(e) => save({ ...c, credits: Math.max(0, numberOr(e.target.value, 0)) })} /></label><label>IMPROVEMENT POINTS<input type="number" min={0} value={c.improvementPoints} onChange={(e) => save({ ...c, improvementPoints: Math.max(0, numberOr(e.target.value, 0)) })} /></label><label>STAMINA<input type="number" min={0} max={c.stamina} value={c.currentStamina} onChange={(e) => setStam(numberOr(e.target.value, 0))} /></label><label>LUCK<input type="number" min={0} max={6} value={c.luck} onChange={(e) => setLuck(numberOr(e.target.value, 0))} /></label></section>
       <section className="panel"><h2>CONDITIONS / NOTES</h2><div className="row"><input value={condition} onChange={(e) => setCondition(e.target.value)} placeholder="Add note or condition" /><button onClick={() => setCondition('')}>CLEAR</button></div>{condition && <p>{condition}</p>}<p className="muted">Personal record only — no new condition mechanic is added.</p></section>
     </div>}
-    {tab === 'skills' && <section className="panel"><h2>SKILLS</h2><div className="skillsEditable">{SKILLS.map((skill) => <label className="skillEdit" key={skill}><span>{skill}</span><input type="number" min={0} max={5} value={c.skills[skill]} onChange={(e) => setSkill(skill, Number(e.target.value) || 0)} /></label>)}</div></section>}
+
+    {tab === 'skills' && <section className="panel"><h2>SKILLS</h2><div className="skillsEditable">{SKILLS.map((skill) => <label className="skillEdit" key={skill}><span>{skill}</span><input type="number" min={0} max={5} value={c.skills[skill]} onChange={(e) => setSkill(skill, numberOr(e.target.value, 0))} /></label>)}</div></section>}
+
     {tab === 'inventory' && <section className="panel"><div className="inventory-head"><h2>INVENTORY</h2><select defaultValue="" onChange={(e) => { if (!e.target.value) return; addEquipment(e.target.value); e.currentTarget.value = '' }}><option value="">ADD EQUIPMENT...</option>{EQUIPMENT.map((item) => <option key={item.name} value={item.name} disabled={item.cost === null}>{item.name}</option>)}</select></div>
-      <div className="equipmentGrid">{c.equipment.length === 0 ? <p className="muted">No equipment recorded.</p> : c.equipment.map((inventoryItem, index) => { const details = EQUIPMENT.find((item) => item.name === inventoryItem.name); if (!details) return null; return <article className="equipmentCard" key={inventoryItem.id}>
-        <div className="equipmentCardHeader"><h3>{inventoryItem.name}</h3><button className="danger" onClick={() => removeEquipment(index)}>REMOVE</button></div><div className="equipmentDivider" />
-        <div className="equipmentFields"><div><strong>Properties:</strong> {details.properties || '—'}</div><div><strong>Cost:</strong> {details.cost === null ? '—' : `${details.cost}Cr`}</div><div><strong>Rarity:</strong> {details.rarity === null ? '—' : details.rarity}</div><div><strong>Carry Capacity:</strong> {details.carry}</div></div>
-        {renderEquipmentDetails(details.details, details.category)}
-        <div className="equipmentQuantity"><span>QUANTITY</span><button onClick={() => decreaseEquipment(index)}>−</button><input type="number" min={1} value={inventoryItem.quantity} onChange={(e) => save({ ...c, equipment: c.equipment.map((item, i) => i === index ? { ...item, quantity: Math.max(1, Number(e.target.value) || 1) } : item) })} /><button onClick={() => increaseEquipment(index)}>+</button></div>
-      </article>})}</div>
+      <div className="equipmentGrid">{c.equipment.length === 0 ? <p className="muted">No equipment recorded.</p> : c.equipment.map((inventoryItem, index) => {
+        const details = EQUIPMENT.find((item) => item.name === inventoryItem.name)
+        if (!details) return null
+        const properties = inventoryItem.properties ?? details.properties ?? '—'
+        const rarity = inventoryItem.rarity ?? details.rarity
+        const carry = inventoryItem.carry ?? details.carry
+        const cost = inventoryItem.cost ?? details.cost ?? 0
+        return <article className="equipmentCard" key={inventoryItem.id}>
+          <div className="equipmentCardHeader"><input className="equipmentNameInput" value={inventoryItem.name} onChange={(e) => updateEquipment(index, { name: e.target.value })} /><button className="danger" onClick={() => removeEquipment(index)}>REMOVE</button></div>
+          <div className="equipmentDivider" />
+          <div className="equipmentFields">
+            <label><strong>Properties:</strong><input value={properties} onChange={(e) => updateEquipment(index, { properties: e.target.value })} /></label>
+            <label><strong>Cost:</strong><input type="number" min={0} value={cost} onChange={(e) => updateEquipment(index, { cost: Math.max(0, numberOr(e.target.value, 0)) })} /></label>
+            <label><strong>Rarity:</strong><input type="number" min={0} max={6} value={rarity ?? ''} onChange={(e) => updateEquipment(index, { rarity: e.target.value === '' ? null : numberOr(e.target.value, 0) })} /></label>
+            <label><strong>Carry Capacity:</strong><input value={carry} onChange={(e) => updateEquipment(index, { carry: e.target.value })} /></label>
+          </div>
+          <label className="equipmentRawDetails"><strong>Details:</strong><textarea value={inventoryItem.details ?? details.details} onChange={(e) => updateEquipment(index, { details: e.target.value })} /></label>
+          {renderEquipmentDetails(inventoryItem, details.category, details.details)}
+          <div className="equipmentQuantity"><span>QUANTITY</span><button onClick={() => decreaseEquipment(index)}>−</button><input type="number" min={1} value={inventoryItem.quantity} onChange={(e) => updateEquipment(index, { quantity: Math.max(1, numberOr(e.target.value, 1)) })} /><button onClick={() => increaseEquipment(index)}>+</button></div>
+        </article>
+      })}</div>
     </section>}
   </Layout>
 }
