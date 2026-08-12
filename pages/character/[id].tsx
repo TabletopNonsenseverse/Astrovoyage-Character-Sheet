@@ -27,6 +27,15 @@ const tierLines = (parts: string[]) => {
 
 const targetFor = (range: string) => /cube|area/i.test(range) ? 'All creatures in the area' : 'One creature or object'
 
+const skillForCheck = (check: string) => {
+  if (/Light Ranged/i.test(check)) return { characteristic: 'Agility' as const, skill: 'Weapon, Light Ranged' as const }
+  if (/Heavy Ranged/i.test(check)) return { characteristic: 'Agility' as const, skill: 'Weapon, Heavy Ranged' as const }
+  if (/Light Melee/i.test(check)) return { characteristic: 'Hardiness' as const, skill: 'Weapon, Light Melee' as const }
+  if (/Heavy Melee/i.test(check)) return { characteristic: 'Hardiness' as const, skill: 'Weapon, Heavy Melee' as const }
+  if (/Unarmed/i.test(check)) return { characteristic: 'Hardiness' as const, skill: 'Weapon, Unarmed' as const }
+  return null
+}
+
 export default function Active() {
   const r = useRouter()
   const [c, setC] = useState<Character | null>(null)
@@ -45,6 +54,17 @@ export default function Active() {
   const setLuck = (value: number) => save({ ...c, luck: Math.max(0, Math.min(6, value)) })
   const setCharacteristic = (name: typeof CHARACTERISTICS[number], value: number) => save({ ...c, characteristics: { ...c.characteristics, [name]: value } })
   const setSkill = (name: typeof SKILLS[number], value: number) => save({ ...c, skills: { ...c.skills, [name]: Math.max(0, Math.min(5, value)) } })
+
+  const rollAttack = (check: string, label: string) => {
+    const parsed = skillForCheck(check)
+    if (!parsed) return
+    const characteristic = c.characteristics[parsed.characteristic]
+    const skill = c.skills[parsed.skill]
+    const die1 = Math.floor(Math.random() * 10) + 1
+    const die2 = Math.floor(Math.random() * 10) + 1
+    const total = die1 + die2 + characteristic + skill
+    window.alert(`${label}\n\n2d10: ${die1} + ${die2}\n${parsed.characteristic}: +${characteristic}\n${parsed.skill}: +${skill}\n\nTotal: ${total}`)
+  }
 
   const addEquipment = (name: string) => {
     const item = EQUIPMENT.find((equipment) => equipment.name === name)
@@ -66,12 +86,13 @@ export default function Active() {
     const tiers = tierLines(parts)
     const ammo = parts.find((part) => /Cr\/shot/i.test(part))
     const magazine = parts.find((part) => /^magazine\b/i.test(part))
+    const defaultCheck = combat || ''
 
     if (actions) return <div className="equipmentDetails">
       {actions.map((action) => <div className="equipmentAction" key={action.title}>
-        <h4>{action.title}</h4>
+        <h4><button className="attackActionButton" onClick={() => action.check && rollAttack(action.check, `${entry.name} — ${action.title}`)}>{action.title}</button></h4>
         <div className="equipmentMeta">📐 {action.range} &nbsp;&nbsp;🎯 {action.target}</div>
-        {action.check && <div className="equipmentRule"><strong>{action.check}</strong></div>}
+        {action.check && <button className="equipmentRule attackCheckButton" onClick={() => rollAttack(action.check!, `${entry.name} — ${action.title}`)}><strong>{action.check.replace(/Weapon, /, 'Weapons, ')}</strong></button>}
         {action.tiers && <ul className="equipmentTiers">{action.tiers.map((tier) => <li key={tier}>{tier}</li>)}</ul>}
         {action.effect && <div className="equipmentRule"><strong>Effect:</strong> {action.effect}</div>}
       </div>)}
@@ -88,7 +109,7 @@ export default function Active() {
     const remaining = parts.filter((part) => !consumed.has(part) && !labeled.includes(part))
     return <div className="equipmentDetails">
       {weapon && <div className="equipmentMeta">{range ? <>📐 {range}&nbsp;&nbsp;</> : null}🎯 {targetFor(range || '')}</div>}
-      {combat && <div className="equipmentRule"><strong>{combat}</strong></div>}
+      {combat && <button className="equipmentRule attackCheckButton" onClick={() => rollAttack(combat, `${entry.name} — Single Shot`)}><strong>{combat.replace(/Weapon, /, 'Weapons, ')}</strong></button>}
       {tiers.length >= 2 && <ul className="equipmentTiers">{tiers.map((tier) => <li key={tier}>{tier}</li>)}</ul>}
       {labeled.map((part) => {
         const match = part.match(/^(Armour|Threshold|Aim|Reset|Effect|Special|Surgery(?: & Recovery)?(?: Time)?|Location|Side effect)\s*:?[\s-]*(.*)$/i)
@@ -111,6 +132,6 @@ export default function Active() {
     <div className="tabs">{(['overview', 'skills', 'inventory'] as const).map((tabName) => <button key={tabName} className={tab === tabName ? 'activeTab' : ''} onClick={() => setTab(tabName)}>{tabName.toUpperCase()}</button>)}</div>
     {tab === 'overview' && <div className="grid three"><section className="panel"><h2>CHARACTERISTICS</h2>{CHARACTERISTICS.map((characteristic) => <label className="editableStat" key={characteristic}>{characteristic}<input type="number" value={c.characteristics[characteristic]} onChange={(e) => setCharacteristic(characteristic, numberOr(e.target.value, 0))} /></label>)}</section><section className="panel"><h2>RESOURCES</h2><label>CREDITS<input type="number" min={0} value={c.credits} onChange={(e) => save({ ...c, credits: Math.max(0, numberOr(e.target.value, 0)) })} /></label><label>IMPROVEMENT POINTS<input type="number" min={0} value={c.improvementPoints} onChange={(e) => save({ ...c, improvementPoints: Math.max(0, numberOr(e.target.value, 0)) })} /></label><label>STAMINA<input type="number" min={0} max={c.stamina} value={c.currentStamina} onChange={(e) => setStam(numberOr(e.target.value, 0))} /></label><label>LUCK<input type="number" min={0} max={6} value={c.luck} onChange={(e) => setLuck(numberOr(e.target.value, 0))} /></label></section><section className="panel"><h2>CONDITIONS / NOTES</h2><div className="row"><input value={condition} onChange={(e) => setCondition(e.target.value)} placeholder="Add note or condition" /><button onClick={() => setCondition('')}>CLEAR</button></div>{condition && <p>{condition}</p>}<p className="muted">Personal record only — no new condition mechanic is added.</p></section></div>}
     {tab === 'skills' && <section className="panel"><h2>SKILLS</h2><div className="skillsEditable">{SKILLS.map((skill) => <label className="skillEdit" key={skill}><span>{skill}</span><input type="number" min={0} max={5} value={c.skills[skill]} onChange={(e) => setSkill(skill, numberOr(e.target.value, 0))} /></label>)}</div></section>}
-    {tab === 'inventory' && <section className="panel"><div className="inventory-head"><h2>INVENTORY</h2><select defaultValue="" onChange={(e) => { if (!e.target.value) return; addEquipment(e.target.value); e.currentTarget.value = '' }}><option value="">ADD EQUIPMENT...</option>{EQUIPMENT.map((item) => <option key={item.name} value={item.name} disabled={item.cost === null}>{item.name}</option>)}</select></div><div className="equipmentGrid">{c.equipment.length === 0 ? <p className="muted">No equipment recorded.</p> : c.equipment.map((inventoryItem, index) => { const details = EQUIPMENT.find((item) => item.name === inventoryItem.name); if (!details) return null; const properties = inventoryItem.properties ?? details.properties ?? '—'; const rarity = inventoryItem.rarity ?? details.rarity; const carry = inventoryItem.carry ?? details.carry; const cost = inventoryItem.cost ?? details.cost ?? 0; return <article className="equipmentCard" key={inventoryItem.id}><div className="equipmentCardHeader"><input className="equipmentNameInput" value={inventoryItem.name} onChange={(e) => updateEquipment(index, { name: e.target.value })} /><button className="danger" onClick={() => removeEquipment(index)}>REMOVE</button></div><div className="equipmentDivider" /><div className="equipmentFields"><label><strong>Properties:</strong><input value={properties} onChange={(e) => updateEquipment(index, { properties: e.target.value })} /></label><label><strong>Cost:</strong><input type="number" min={0} value={cost} onChange={(e) => updateEquipment(index, { cost: Math.max(0, numberOr(e.target.value, 0)) })} /></label><label><strong>Rarity:</strong><input type="number" min={0} max={6} value={rarity ?? ''} onChange={(e) => updateEquipment(index, { rarity: e.target.value === '' ? null : numberOr(e.target.value, 0) })} /></label><label><strong>Carry Capacity:</strong><input value={carry} onChange={(e) => updateEquipment(index, { carry: e.target.value })} /></label></div>{renderEquipmentDetails(inventoryItem, details.category, details.details)}<div className="equipmentQuantity"><span>QUANTITY</span><button onClick={() => decreaseEquipment(index)}>−</button><input type="number" min={1} value={inventoryItem.quantity} onChange={(e) => updateEquipment(index, { quantity: Math.max(1, numberOr(e.target.value, 1)) })} /><button onClick={() => increaseEquipment(index)}>+</button></div></article>})}</div></section>}
+    {tab === 'inventory' && <section className="panel"><div className="inventory-head"><h2>INVENTORY</h2><select defaultValue="" onChange={(e) => { if (!e.target.value) return; addEquipment(e.target.value); e.currentTarget.value = '' }}><option value="">ADD EQUIPMENT...</option>{EQUIPMENT.map((item) => <option key={item.name} value={item.name} disabled={item.cost === null}>{item.name}</option>)}</select></div><div className="equipmentGrid">{c.equipment.length === 0 ? <p className="muted">No equipment recorded.</p> : c.equipment.map((inventoryItem, index) => { const details = EQUIPMENT.find((item) => item.name === inventoryItem.name); if (!details) return null; const properties = inventoryItem.properties ?? details.properties ?? '—'; const rarity = inventoryItem.rarity ?? details.rarity; const carry = inventoryItem.carry ?? details.carry; const cost = inventoryItem.cost ?? details.cost ?? 0; return <article className="equipmentCard" key={inventoryItem.id}><div className="equipmentCardHeader"><button className="equipmentNameButton" onClick={() => { const actions = WEAPON_ACTIONS[inventoryItem.name]; const action = actions?.find((item) => /single shot|^shot$/i.test(item.title)) || actions?.[0]; if (action?.check) rollAttack(action.check, `${inventoryItem.name} — ${action.title}`) }}>{inventoryItem.name}</button><input className="equipmentNameInput" value={inventoryItem.name} onChange={(e) => updateEquipment(index, { name: e.target.value })} /><button className="danger" onClick={() => removeEquipment(index)}>REMOVE</button></div><div className="equipmentDivider" /><div className="equipmentFields"><label><strong>Properties:</strong><input value={properties} onChange={(e) => updateEquipment(index, { properties: e.target.value })} /></label><label><strong>Cost:</strong><input type="number" min={0} value={cost} onChange={(e) => updateEquipment(index, { cost: Math.max(0, numberOr(e.target.value, 0)) })} /></label><label><strong>Rarity:</strong><input type="number" min={0} max={6} value={rarity ?? ''} onChange={(e) => updateEquipment(index, { rarity: e.target.value === '' ? null : numberOr(e.target.value, 0) })} /></label><label><strong>Carry Capacity:</strong><input value={carry} onChange={(e) => updateEquipment(index, { carry: e.target.value })} /></label></div>{renderEquipmentDetails(inventoryItem, details.category, details.details)}<div className="equipmentQuantity"><span>QUANTITY</span><button onClick={() => decreaseEquipment(index)}>−</button><input type="number" min={1} value={inventoryItem.quantity} onChange={(e) => updateEquipment(index, { quantity: Math.max(1, numberOr(e.target.value, 1)) })} /><button onClick={() => increaseEquipment(index)}>+</button></div></article>})}</div></section>}
   </Layout>
 }
