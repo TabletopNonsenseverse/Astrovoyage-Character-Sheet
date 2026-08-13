@@ -4,13 +4,14 @@ import { saveCharacter } from '../lib/storage'
 import { CHARACTERISTICS, SKILLS } from '../lib/types'
 
 const CONDITIONS=['Bleeding','Blinded','Burning','Dazed','Deafened','Frightened','Grappled','Prone','Restrained','Stunned','Unconscious','Wounded']
-function download(name:string,data:Blob|string,type='application/octet-stream'){const blob=data instanceof Blob?data:new Blob([data],{type});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();URL.revokeObjectURL(url)}
+function download(name:string,data:Blob|string,type='application/octet-stream'){const blob=data instanceof Blob?data:new Blob([data],{type});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000)}
 function safeName(name:string){return(name||'unnamed-character').replace(/[^a-z0-9_-]+/gi,'_')}
 
 async function exportPdf(c:Character){
  const {PDFDocument,StandardFonts,rgb}=await import('pdf-lib');const pdf=await PDFDocument.create();const regular=await pdf.embedFont(StandardFonts.Helvetica);const bold=await pdf.embedFont(StandardFonts.HelveticaBold);const form=pdf.getForm();const W=595.28,H=841.89,M=32;const dark=rgb(.05,.09,.13),blue=rgb(.09,.35,.55),muted=rgb(.32,.4,.46),line=rgb(.72,.78,.82),fieldBg=rgb(.96,.98,1);let n=0;let page=pdf.addPage([W,H]);
- const tf=(name:string,value:string,x:number,y:number,w:number,h:number,size=9)=>{const f=form.createTextField(`field_${n++}_${name.replace(/[^a-z0-9]/gi,'_')}`);f.setText(value);f.setFontSize(size);f.addToPage(page,{x,y,width:w,height:h,borderWidth:0,backgroundColor:fieldBg});return f};
- const label=(s:string,x:number,y:number,size=8)=>page.drawText(s,{x,y,size,font:regular,color:muted});const head=(s:string,x:number,y:number,size=11)=>page.drawText(s,{x,y,size,font:bold,color:dark});
+ const pdfValue=(value:string)=>value.replace(/[^\x20-\x7E]/g,' ');
+ const tf=(name:string,value:string,x:number,y:number,w:number,h:number,size=9)=>{const f=form.createTextField(`field_${n++}_${name.replace(/[^a-z0-9]/gi,'_')}`);f.setText(pdfValue(value));f.setFontSize(size);f.addToPage(page,{x,y,width:w,height:h,borderWidth:0,backgroundColor:fieldBg});return f};
+ const label=(s:string,x:number,y:number,size=8)=>page.drawText(pdfValue(s),{x,y,size,font:regular,color:muted});const head=(s:string,x:number,y:number,size=11)=>page.drawText(pdfValue(s),{x,y,size,font:bold,color:dark});
  page.drawText('ASTROVOYAGE CHARACTER SHEET',{x:M,y:H-38,size:18,font:bold,color:dark});page.drawText('CHARACTER RECORD',{x:M,y:H-53,size:7,font:bold,color:muted});page.drawLine({start:{x:M,y:H-62},end:{x:W-M,y:H-62},thickness:3,color:blue});let y=H-92;
  label('NAME',M,y+20);tf('name',c.name||'UNNAMED',M,y-2,260,22,12);label('ID',330,y+20);tf('id',c.id,330,y-2,233,22,8);y-=48;
  const sw=(W-2*M-18)/4;[['STAMINA',`${c.currentStamina} / ${c.stamina}`],['LUCK',`${c.luck} / 6`],['ARMOUR',String(c.armourValue??0)],['SPEED',`${c.speed}m`]].forEach((s,i)=>{const x=M+i*(sw+6);label(s[0],x,y+28);tf(s[0],s[1],x,y,sw,24,11)});y-=38;
