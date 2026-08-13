@@ -35,7 +35,6 @@ async function exportPdf(c:Character){
  label('ID',330,y+20);tf('id',c.id,330,y-2,233,22,8);y-=48;
  const sw=(W-2*M-18)/4;
  [['STAMINA',`${c.currentStamina} / ${c.stamina}`],['LUCK',`${c.luck} / 6`],['ARMOUR',String(c.armourValue??0)],['SPEED',`${c.speed}m`]].forEach((s,i)=>{const x=M+i*(sw+6);label(s[0],x,y+28);tf(s[0],s[1],x,y,sw,24,11)});y-=38;
- // Keep the damage-threshold layout compact and unambiguous: heading, two labels, two fields.
  head('DAMAGE THRESHOLD',M,y+25);
  label('PHYSICAL',M,y+7);label('ENERGY',145,y+7);
  tf('thresholdPhysical',c.thresholdPhysical??0,M,y-16,110,22,10);
@@ -46,14 +45,15 @@ async function exportPdf(c:Character){
  CHARACTERISTICS.forEach((s,i)=>{const x=M+i*cw;label(s.toUpperCase(),x,y-10);tf(`characteristic_${s}`,c.characteristics[s],x,y-38,cw-5,22,11)});y-=70;
  head('CONDITIONS',M,y);const cy=y-18;
  CONDITIONS.forEach((cond,i)=>{const col=i%3,row=Math.floor(i/3),x=M+col*178,yy=cy-row*22;const cb=form.createCheckBox(`condition_${n++}_${cond.toLowerCase()}`);cb.addToPage(page,{x,y:yy-2,width:11,height:11,borderWidth:1,borderColor:line});page.drawText(cond,{x:x+16,y:yy,size:8,font:regular,color:dark})});
- // Use four compact columns for skills so every skill stays on page 1.
  y=cy-3*22-18;
  head('SKILLS',M,y);
+ const sortedSkills=[...SKILLS].sort((a,b)=>a.localeCompare(b));
  const skillCols=4;
+ const skillRows=Math.ceil(sortedSkills.length/skillCols);
  const skillColW=(W-2*M-18*(skillCols-1))/skillCols;
  const skillStartY=y-18;
  const skillRowH=18;
- SKILLS.forEach((s,i)=>{const col=i%skillCols,row=Math.floor(i/skillCols),x=M+col*(skillColW+18),yy=skillStartY-row*skillRowH;page.drawText(pdfValue(s),{x,y:yy+4,size:7,font:regular,color:dark});tf(`skill_${s}`,c.skills[s],x+skillColW-32,yy,32,14,8)});
+ sortedSkills.forEach((s,i)=>{const col=Math.floor(i/skillRows),row=i%skillRows,x=M+col*(skillColW+18),yy=skillStartY-row*skillRowH;page.drawText(pdfValue(s),{x,y:yy+4,size:7,font:regular,color:dark});tf(`skill_${s}`,c.skills[s],x+skillColW-32,yy,32,14,8)});
 
  page=pdf.addPage([W,H]);
  page.drawText('ASTROVOYAGE CHARACTER SHEET',{x:M,y:H-38,size:18,font:bold,color:dark});
