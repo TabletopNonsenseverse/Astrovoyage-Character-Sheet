@@ -35,10 +35,13 @@ async function exportPdf(c:Character){
  label('ID',330,y+20);tf('id',c.id,330,y-2,233,22,8);y-=48;
  const sw=(W-2*M-18)/4;
  [['STAMINA',`${c.currentStamina} / ${c.stamina}`],['LUCK',`${c.luck} / 6`],['ARMOUR',String(c.armourValue??0)],['SPEED',`${c.speed}m`]].forEach((s,i)=>{const x=M+i*(sw+6);label(s[0],x,y+28);tf(s[0],s[1],x,y,sw,24,11)});y-=38;
- label('DAMAGE THRESHOLD — PHYSICAL',M,y+26);tf('thresholdPhysical',c.thresholdPhysical??0,M,y,110,22,10);
- label('DAMAGE THRESHOLD — ENERGY',145,y+26);tf('thresholdEnergy',c.thresholdEnergy??0,145,y,110,22,10);
- label('CREDITS',290,y+26);tf('credits',c.credits,290,y,110,22,10);
- label('IMPROVEMENT POINTS',410,y+26);tf('improvementPoints',c.improvementPoints,410,y,123,22,10);y-=48;
+ // Keep the damage-threshold layout compact and unambiguous: heading, two labels, two fields.
+ head('DAMAGE THRESHOLD',M,y+25);
+ label('PHYSICAL',M,y+7);label('ENERGY',145,y+7);
+ tf('thresholdPhysical',c.thresholdPhysical??0,M,y-16,110,22,10);
+ tf('thresholdEnergy',c.thresholdEnergy??0,145,y-16,110,22,10);
+ label('CREDITS',290,y+7);tf('credits',c.credits,290,y-16,110,22,10);
+ label('IMPROVEMENT POINTS',410,y+7);tf('improvementPoints',c.improvementPoints,410,y-16,123,22,10);y-=58;
  head('CHARACTERISTICS',M,y+10);const cw=(W-2*M)/5;
  CHARACTERISTICS.forEach((s,i)=>{const x=M+i*cw;label(s.toUpperCase(),x,y-10);tf(`characteristic_${s}`,c.characteristics[s],x,y-38,cw-5,22,11)});y-=70;
  head('CONDITIONS',M,y);const cy=y-18;
