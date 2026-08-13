@@ -1,6 +1,6 @@
 # Astrovoyage Character Sheet — clean Phase 1
 
-This is a clean Next.js Pages Router project intended for a new repository.
+xThis is a clean Next.js Pages Router project intended for a new repository.
 
 Run locally with:
 
