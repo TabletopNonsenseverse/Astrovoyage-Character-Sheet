@@ -238,3 +238,482 @@ body:after{content:"";position:fixed;inset:0;pointer-events:none;background:repe
 @media(max-width:500px){
   .skillsGrid{grid-template-rows:repeat(47,minmax(0,auto))}
 }
+/* =========================================================
+   ASTROVOYAGE PLAYTEST PROMOTION
+   ========================================================= */
+
+.playtest-banner {
+  position: relative;
+  z-index: 100;
+  width: 100%;
+  padding: 12px 20px;
+  background:
+    linear-gradient(
+      90deg,
+      rgba(30, 91, 140, 0.35),
+      rgba(11, 25, 39, 0.98) 25%,
+      rgba(11, 25, 39, 0.98) 75%,
+      rgba(30, 91, 140, 0.35)
+    );
+  border-top: 1px solid rgba(120, 194, 255, 0.55);
+  border-bottom: 1px solid rgba(120, 194, 255, 0.5);
+  box-shadow:
+    0 0 20px rgba(50, 150, 230, 0.12),
+    inset 0 1px 0 rgba(255, 255, 255, 0.04);
+}
+
+.playtest-banner:before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  background: var(--blue-bright);
+  box-shadow: 0 0 12px rgba(120, 194, 255, 0.7);
+}
+
+.playtest-banner:after {
+  content: 'PLAYTEST ACCESS';
+  position: absolute;
+  right: 18px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: rgba(120, 194, 255, 0.08);
+  font-family: 'Orbitron', sans-serif;
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: 4px;
+  pointer-events: none;
+}
+
+.playtest-banner-content {
+  position: relative;
+  z-index: 1;
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 22px;
+}
+
+.playtest-banner-text {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.playtest-banner-label {
+  color: var(--blue-bright);
+  font-family: 'Orbitron', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  white-space: nowrap;
+}
+
+.playtest-banner-message {
+  color: #d9e9f8;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+.playtest-button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 165px;
+  padding: 11px 20px;
+  border: 1px solid var(--blue-bright);
+  border-radius: 3px;
+  background: linear-gradient(
+    180deg,
+    #245b83 0%,
+    #163b59 48%,
+    #102b42 100%
+  );
+  color: #ffffff;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 1.4px;
+  text-decoration: none;
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: pointer;
+  box-shadow:
+    0 0 12px rgba(70, 160, 230, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  transition: all 0.18s ease;
+}
+
+.playtest-button:before {
+  content: '▶';
+  margin-right: 8px;
+  font-size: 8px;
+  color: var(--blue-bright);
+}
+
+.playtest-button:hover {
+  color: #ffffff;
+  border-color: #ffffff;
+  background: linear-gradient(
+    180deg,
+    #3279aa 0%,
+    #1d5278 48%,
+    #153c59 100%
+  );
+  box-shadow:
+    0 0 22px rgba(70, 170, 240, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  transform: translateY(-1px);
+}
+
+
+/* =========================================================
+   PLAYTEST POPUP
+   ========================================================= */
+
+.playtest-modal-backdrop {
+  position: fixed;
+  z-index: 9999;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(2, 6, 11, 0.82);
+  backdrop-filter: blur(5px);
+  animation: playtestFadeIn 0.2s ease-out;
+}
+
+.playtest-modal {
+  position: relative;
+  width: min(520px, 100%);
+  padding: 42px 42px 30px;
+  overflow: hidden;
+  text-align: center;
+  background:
+    radial-gradient(
+      ellipse at 50% 0%,
+      rgba(50, 125, 185, 0.18),
+      transparent 55%
+    ),
+    linear-gradient(145deg, #111e2d, #080e16 70%);
+  border: 1px solid var(--blue-bright);
+  box-shadow:
+    0 0 0 1px rgba(40, 90, 130, 0.4),
+    0 0 45px rgba(40, 140, 210, 0.2),
+    0 25px 80px rgba(0, 0, 0, 0.7);
+  clip-path: polygon(
+    0 18px,
+    18px 0,
+    calc(100% - 18px) 0,
+    100% 18px,
+    100% calc(100% - 18px),
+    calc(100% - 18px) 100%,
+    18px 100%,
+    0 calc(100% - 18px)
+  );
+  animation: playtestModalIn 0.25s ease-out;
+}
+
+.playtest-modal:before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 75px;
+  height: 75px;
+  border-top: 2px solid var(--blue-bright);
+  border-left: 2px solid var(--blue-bright);
+}
+
+.playtest-modal:after {
+  content: '';
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 75px;
+  height: 75px;
+  border-right: 2px solid var(--blue-dark);
+  border-bottom: 2px solid var(--blue-dark);
+}
+
+.playtest-modal-scanline {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--blue-bright),
+    transparent
+  );
+  box-shadow: 0 0 15px rgba(120, 194, 255, 0.8);
+  animation: playtestScan 2.5s linear infinite;
+}
+
+.playtest-modal-close {
+  position: absolute;
+  z-index: 2;
+  top: 14px;
+  right: 17px;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid #31475d;
+  background: rgba(5, 11, 18, 0.7);
+  color: var(--muted);
+  font-family: Arial, sans-serif;
+  font-size: 22px;
+  font-weight: 300;
+  line-height: 26px;
+  cursor: pointer;
+}
+
+.playtest-modal-close:hover {
+  color: #ffffff;
+  border-color: var(--blue-bright);
+  box-shadow: none;
+  transform: none;
+}
+
+.playtest-modal-eyebrow {
+  position: relative;
+  z-index: 1;
+  margin-bottom: 17px;
+  color: var(--blue-bright);
+  font-family: 'Orbitron', sans-serif;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 2.5px;
+}
+
+.playtest-modal h2 {
+  position: relative;
+  z-index: 1;
+  margin: 0;
+  color: #f0f8ff;
+  font-family: 'Orbitron', sans-serif;
+  font-size: clamp(27px, 6vw, 40px);
+  font-weight: 700;
+  line-height: 1.05;
+  letter-spacing: 2px;
+  text-shadow: 0 0 25px rgba(100, 180, 240, 0.25);
+}
+
+.playtest-modal-divider {
+  width: 110px;
+  height: 2px;
+  margin: 22px auto 20px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--blue-bright),
+    transparent
+  );
+  box-shadow: 0 0 10px rgba(100, 190, 250, 0.35);
+}
+
+.playtest-modal p {
+  position: relative;
+  z-index: 1;
+  margin: 6px 0;
+  color: #e2edf8;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 19px;
+  font-weight: 600;
+}
+
+.playtest-modal .playtest-modal-description {
+  max-width: 390px;
+  margin: 0 auto 24px;
+  color: var(--muted-bright);
+  font-size: 15px;
+  font-weight: 400;
+  line-height: 1.5;
+}
+
+.playtest-modal-button {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: 15px 20px;
+  border: 1px solid var(--blue-bright);
+  background: linear-gradient(
+    180deg,
+    #2a6d9d,
+    #173d5b
+  );
+  color: #ffffff;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  text-decoration: none;
+  text-transform: uppercase;
+  box-shadow:
+    0 0 20px rgba(70, 160, 230, 0.18),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  transition: all 0.18s ease;
+}
+
+.playtest-modal-button:before {
+  content: '▶';
+  margin-right: 10px;
+  font-size: 8px;
+}
+
+.playtest-modal-button:hover {
+  border-color: #ffffff;
+  background: linear-gradient(
+    180deg,
+    #3985b8,
+    #1e5378
+  );
+  box-shadow:
+    0 0 30px rgba(70, 170, 240, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  transform: translateY(-1px);
+}
+
+.playtest-later-button {
+  position: relative;
+  z-index: 1;
+  display: block;
+  margin: 14px auto 0;
+  padding: 7px 15px;
+  border: 0;
+  background: transparent;
+  color: #63788d;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 13px;
+  letter-spacing: 0.5px;
+  cursor: pointer;
+}
+
+.playtest-later-button:hover {
+  color: #a9bdd0;
+  border: 0;
+  box-shadow: none;
+  transform: none;
+}
+
+.playtest-modal-footer {
+  position: relative;
+  z-index: 1;
+  margin-top: 23px;
+  padding-top: 12px;
+  border-top: 1px solid #1c3044;
+  color: #41576c;
+  font-family: 'Orbitron', sans-serif;
+  font-size: 7px;
+  letter-spacing: 1.5px;
+}
+
+
+/* =========================================================
+   PLAYTEST ANIMATIONS
+   ========================================================= */
+
+@keyframes playtestFadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes playtestModalIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes playtestScan {
+  0% {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+
+  15% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 1;
+  }
+
+  85% {
+    opacity: 1;
+  }
+
+  100% {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+
+/* =========================================================
+   MOBILE
+   ========================================================= */
+
+@media (max-width: 700px) {
+  .playtest-banner {
+    padding: 12px 14px;
+  }
+
+  .playtest-banner-content {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .playtest-banner-text {
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .playtest-banner-label {
+    font-size: 9px;
+  }
+
+  .playtest-banner-message {
+    font-size: 14px;
+  }
+
+  .playtest-button {
+    width: 100%;
+    max-width: 280px;
+  }
+
+  .playtest-banner:after {
+    display: none;
+  }
+
+  .playtest-modal {
+    padding: 38px 25px 25px;
+  }
+
+  .playtest-modal h2 {
+    font-size: 28px;
+  }
+}
