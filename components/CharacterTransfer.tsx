@@ -43,9 +43,14 @@ async function exportPdf(c:Character){
  CHARACTERISTICS.forEach((s,i)=>{const x=M+i*cw;label(s.toUpperCase(),x,y-10);tf(`characteristic_${s}`,c.characteristics[s],x,y-38,cw-5,22,11)});y-=70;
  head('CONDITIONS',M,y);const cy=y-18;
  CONDITIONS.forEach((cond,i)=>{const col=i%3,row=Math.floor(i/3),x=M+col*178,yy=cy-row*22;const cb=form.createCheckBox(`condition_${n++}_${cond.toLowerCase()}`);cb.addToPage(page,{x,y:yy-2,width:11,height:11,borderWidth:1,borderColor:line});page.drawText(cond,{x:x+16,y:yy,size:8,font:regular,color:dark})});
- y=cy-4*22-10;
- head('SKILLS',M,y);const sy=y-18,colW=(W-2*M-20)/2;
- SKILLS.forEach((s,i)=>{const col=i%2,row=Math.floor(i/2),x=M+col*(colW+20),yy=sy-row*19;page.drawText(pdfValue(s),{x,y:yy+4,size:8,font:regular,color:dark});tf(`skill_${s}`,c.skills[s],x+105,yy,colW-105,15,8)});
+ // Use four compact columns for skills so every skill stays on page 1.
+ y=cy-3*22-18;
+ head('SKILLS',M,y);
+ const skillCols=4;
+ const skillColW=(W-2*M-18*(skillCols-1))/skillCols;
+ const skillStartY=y-18;
+ const skillRowH=18;
+ SKILLS.forEach((s,i)=>{const col=i%skillCols,row=Math.floor(i/skillCols),x=M+col*(skillColW+18),yy=skillStartY-row*skillRowH;page.drawText(pdfValue(s),{x,y:yy+4,size:7,font:regular,color:dark});tf(`skill_${s}`,c.skills[s],x+skillColW-32,yy,32,14,8)});
 
  page=pdf.addPage([W,H]);
  page.drawText('ASTROVOYAGE CHARACTER SHEET',{x:M,y:H-38,size:18,font:bold,color:dark});
@@ -65,9 +70,6 @@ async function exportPdf(c:Character){
    iy-=50;
  });
  if(!equipment.length)page.drawText('No equipment recorded.',{x:M,y:iy,size:9,font:regular,color:muted});
- // Do not ask pdf-lib to regenerate appearances here. That operation is the
- // source of browser-specific failures with AcroForm fields in some builds.
- // pdf-lib can save the fields with their values directly.
  const bytes=await pdf.save({useObjectStreams:false});
  download(`${safeName(c.name)}.pdf`,new Blob([bytes],{type:'application/pdf'}));
 }
