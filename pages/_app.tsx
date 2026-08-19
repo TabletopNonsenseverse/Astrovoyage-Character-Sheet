@@ -1,13 +1,13 @@
 import type { AppProps } from 'next/app'
+import type { ReactNode } from 'react'
 import { useEffect, useState } from 'react'
 import '../styles/globals.css'
 import { supabase } from '../lib/supabase'
 
 const PLAYTEST_URL='https://tabletopnonsenseverse.myshopify.com/products/astrovoyage'
-
 type AuthMode='signin'|'signup'
 
-function AccountGate({children}:{children:React.ReactNode}){
+function AccountGate({children}:{children:ReactNode}){
  const [ready,setReady]=useState(false);const [session,setSession]=useState<any>(null);const [mode,setMode]=useState<AuthMode>('signin');const [email,setEmail]=useState('');const [password,setPassword]=useState('');const [message,setMessage]=useState('');const [busy,setBusy]=useState(false)
  useEffect(()=>{let alive=true;supabase.auth.getSession().then(({data})=>{if(alive){setSession(data.session);setReady(true)}});const {data:{subscription}}=supabase.auth.onAuthStateChange((_event,next)=>{setSession(next);setReady(true)});return()=>{alive=false;subscription.unsubscribe()}},[])
  if(!ready)return <div className="accountGate"><div className="accountCard"><div className="eyebrow">ASTROVOYAGE // PERSONNEL TERMINAL</div><h1>Loading…</h1></div></div>
@@ -23,5 +23,3 @@ export default function App({ Component, pageProps }: AppProps){
  const closePopup=()=>{sessionStorage.setItem('astrovoyage-playtest-popup-seen','true');setShowPlaytestPopup(false)}
  return <AccountGate><><div className="playtest-banner"><div className="playtest-banner-content"><div className="playtest-banner-text"><span className="playtest-banner-label">ASTROVOYAGE PLAYTEST</span><span className="playtest-banner-message">Get the playtest version of Astrovoyage here.</span></div><a href={PLAYTEST_URL} target="_blank" rel="noreferrer" className="playtest-button">Get the Playtest</a></div></div><Component {...pageProps}/>{showPlaytestPopup&&<div className="playtest-modal-backdrop" onClick={closePopup} role="presentation"><div className="playtest-modal" onClick={e=>e.stopPropagation()} role="dialog" aria-modal="true"><button type="button" className="playtest-modal-close" onClick={closePopup} aria-label="Close">×</button><div className="playtest-modal-scanline"/><div className="playtest-modal-eyebrow">ASTROVOYAGE // PLAYTEST ACCESS</div><h2>PLAY THE FULL<br/>ASTROVOYAGE<br/>PLAYTEST</h2><div className="playtest-modal-divider"/><p>Like what you're seeing?</p><p className="playtest-modal-description">Get the full playtest version of Astrovoyage and help us shape the game.</p><a href={PLAYTEST_URL} target="_blank" rel="noreferrer" className="playtest-modal-button" onClick={closePopup}>GET THE PLAYTEST</a><button type="button" className="playtest-later-button" onClick={closePopup}>Maybe later</button><div className="playtest-modal-footer">ASTROVOYAGE // PERSONNEL DOSSIER // ONLINE</div></div></div>}</></AccountGate>
 }
-
-export const getStaticProps=()=>({props:{}})
