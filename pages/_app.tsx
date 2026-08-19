@@ -1,132 +1,27 @@
 import type { AppProps } from 'next/app'
 import { useEffect, useState } from 'react'
 import '../styles/globals.css'
+import { supabase } from '../lib/supabase'
 
-const PLAYTEST_URL =
-  'https://tabletopnonsenseverse.myshopify.com/products/astrovoyage'
+const PLAYTEST_URL='https://tabletopnonsenseverse.myshopify.com/products/astrovoyage'
 
-export default function App({ Component, pageProps }: AppProps) {
-  const [showPlaytestPopup, setShowPlaytestPopup] = useState(false)
+type AuthMode='signin'|'signup'
 
-  useEffect(() => {
-    // Only show the promotion once per browser session.
-    const alreadySeen = sessionStorage.getItem('astrovoyage-playtest-popup-seen')
-
-    if (!alreadySeen) {
-      const timer = window.setTimeout(() => {
-        setShowPlaytestPopup(true)
-      }, 900)
-
-      return () => window.clearTimeout(timer)
-    }
-  }, [])
-
-  const closePopup = () => {
-    sessionStorage.setItem('astrovoyage-playtest-popup-seen', 'true')
-    setShowPlaytestPopup(false)
-  }
-
-  return (
-    <>
-      {/* Prominent playtest banner */}
-      <div className="playtest-banner">
-        <div className="playtest-banner-content">
-          <div className="playtest-banner-text">
-            <span className="playtest-banner-label">
-              ASTROVOYAGE PLAYTEST
-            </span>
-
-            <span className="playtest-banner-message">
-              Get the playtest version of Astrovoyage here.
-            </span>
-          </div>
-
-          <a
-            href={PLAYTEST_URL}
-            target="_blank"
-            rel="noreferrer"
-            className="playtest-button"
-          >
-            Get the Playtest
-          </a>
-        </div>
-      </div>
-
-      {/* Main application */}
-      <Component {...pageProps} />
-
-      {/* Playtest promotion popup */}
-      {showPlaytestPopup && (
-        <div
-          className="playtest-modal-backdrop"
-          onClick={closePopup}
-          role="presentation"
-        >
-          <div
-            className="playtest-modal"
-            onClick={(event) => event.stopPropagation()}
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="playtest-modal-title"
-          >
-            <button
-              type="button"
-              className="playtest-modal-close"
-              onClick={closePopup}
-              aria-label="Close"
-            >
-              ×
-            </button>
-
-            <div className="playtest-modal-scanline" />
-
-            <div className="playtest-modal-eyebrow">
-              ASTROVOYAGE // PLAYTEST ACCESS
-            </div>
-
-            <h2 id="playtest-modal-title">
-              PLAY THE FULL
-              <br />
-              ASTROVOYAGE
-              <br />
-              PLAYTEST
-            </h2>
-
-            <div className="playtest-modal-divider" />
-
-            <p>
-              Like what you're seeing?
-            </p>
-
-            <p className="playtest-modal-description">
-              Get the full playtest version of Astrovoyage and help us shape
-              the game.
-            </p>
-
-            <a
-              href={PLAYTEST_URL}
-              target="_blank"
-              rel="noreferrer"
-              className="playtest-modal-button"
-              onClick={closePopup}
-            >
-              GET THE PLAYTEST
-            </a>
-
-            <button
-              type="button"
-              className="playtest-later-button"
-              onClick={closePopup}
-            >
-              Maybe later
-            </button>
-
-            <div className="playtest-modal-footer">
-              ASTROVOYAGE // PERSONNEL DOSSIER // ONLINE
-            </div>
-          </div>
-        </div>
-      )}
-    </>
-  )
+function AccountGate({children}:{children:React.ReactNode}){
+ const [ready,setReady]=useState(false);const [session,setSession]=useState<any>(null);const [mode,setMode]=useState<AuthMode>('signin');const [email,setEmail]=useState('');const [password,setPassword]=useState('');const [message,setMessage]=useState('');const [busy,setBusy]=useState(false)
+ useEffect(()=>{let alive=true;supabase.auth.getSession().then(({data})=>{if(alive){setSession(data.session);setReady(true)}});const {data:{subscription}}=supabase.auth.onAuthStateChange((_event,next)=>{setSession(next);setReady(true)});return()=>{alive=false;subscription.unsubscribe()}},[])
+ if(!ready)return <div className="accountGate"><div className="accountCard"><div className="eyebrow">ASTROVOYAGE // PERSONNEL TERMINAL</div><h1>Loading…</h1></div></div>
+ if(session)return <>{children}<div className="accountBar"><span>{session.user.email}</span><button onClick={()=>supabase.auth.signOut()}>Sign out</button></div></>
+ const submit=async(e:React.FormEvent)=>{e.preventDefault();setBusy(true);setMessage('');try{if(mode==='signin'){const {error}=await supabase.auth.signInWithPassword({email,password});if(error)throw error}else{const {data,error}=await supabase.auth.signUp({email,password,options:{emailRedirectTo:window.location.origin+'/'}});if(error)throw error;setMessage(data.session?'Account created.':'Account created. Check your email and confirm your address, then sign in.');setMode('signin')}}catch(err:any){setMessage(err?.message||'Unable to continue.')}finally{setBusy(false)}}
+ const resend=async()=>{if(!email)return setMessage('Enter your email first.');setBusy(true);const {error}=await supabase.auth.resend({type:'signup',email,options:{emailRedirectTo:window.location.origin+'/'}});setMessage(error?.message||'A new confirmation email has been sent. Use the newest email.');setBusy(false)}
+ return <div className="accountGate"><div className="accountCard"><div className="eyebrow">ASTROVOYAGE // PLAYER ACCESS</div><h1>{mode==='signin'?'Player sign in':'Create player account'}</h1><p>Your characters are private to your player account. No GM account is required.</p><form onSubmit={submit}><label>Email<input type="email" value={email} onChange={e=>setEmail(e.target.value)} required autoComplete="email"/></label><label>Password<input type="password" value={password} onChange={e=>setPassword(e.target.value)} minLength={6} required autoComplete={mode==='signin'?'current-password':'new-password'}/></label>{message&&<div className="accountMessage">{message}</div>}<button className="accountPrimary" disabled={busy}>{busy?'PLEASE WAIT…':mode==='signin'?'SIGN IN':'CREATE ACCOUNT'}</button></form><div className="accountLinks"><button onClick={()=>{setMode(mode==='signin'?'signup':'signin');setMessage('')}}>{mode==='signin'?'Create a player account':'I already have an account'}</button>{mode==='signin'&&<button onClick={resend}>Resend confirmation email</button>}</div></div></div>
 }
+
+export default function App({ Component, pageProps }: AppProps){
+ const [showPlaytestPopup,setShowPlaytestPopup]=useState(false)
+ useEffect(()=>{const seen=sessionStorage.getItem('astrovoyage-playtest-popup-seen');if(!seen){const t=window.setTimeout(()=>setShowPlaytestPopup(true),900);return()=>window.clearTimeout(t)}},[])
+ const closePopup=()=>{sessionStorage.setItem('astrovoyage-playtest-popup-seen','true');setShowPlaytestPopup(false)}
+ return <AccountGate><><div className="playtest-banner"><div className="playtest-banner-content"><div className="playtest-banner-text"><span className="playtest-banner-label">ASTROVOYAGE PLAYTEST</span><span className="playtest-banner-message">Get the playtest version of Astrovoyage here.</span></div><a href={PLAYTEST_URL} target="_blank" rel="noreferrer" className="playtest-button">Get the Playtest</a></div></div><Component {...pageProps}/>{showPlaytestPopup&&<div className="playtest-modal-backdrop" onClick={closePopup} role="presentation"><div className="playtest-modal" onClick={e=>e.stopPropagation()} role="dialog" aria-modal="true"><button type="button" className="playtest-modal-close" onClick={closePopup} aria-label="Close">×</button><div className="playtest-modal-scanline"/><div className="playtest-modal-eyebrow">ASTROVOYAGE // PLAYTEST ACCESS</div><h2>PLAY THE FULL<br/>ASTROVOYAGE<br/>PLAYTEST</h2><div className="playtest-modal-divider"/><p>Like what you're seeing?</p><p className="playtest-modal-description">Get the full playtest version of Astrovoyage and help us shape the game.</p><a href={PLAYTEST_URL} target="_blank" rel="noreferrer" className="playtest-modal-button" onClick={closePopup}>GET THE PLAYTEST</a><button type="button" className="playtest-later-button" onClick={closePopup}>Maybe later</button><div className="playtest-modal-footer">ASTROVOYAGE // PERSONNEL DOSSIER // ONLINE</div></div></div>}</></AccountGate>
+}
+
+export const getStaticProps=()=>({props:{}})
